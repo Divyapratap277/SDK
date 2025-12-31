@@ -27,6 +27,9 @@ bargad.trackScreenOrientation = true;
 bargad.trackDisplaySettings = true;
 bargad.trackSwipeEvents = true; 
 bargad.trackPinchGestures = true;  
+bargad.trackAmbientLight = true;
+bargad.trackDeviceLocation = true;
+bargad.trackGyroscope = true; 
 
 
 // Start SDK
