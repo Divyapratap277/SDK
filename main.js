@@ -16,11 +16,17 @@ bargad.trackFormTime = {
 
 bargad.trackOTPAttempts = {
   enabled: true,
-  args: [["otp-btn"]]
+  args: [["otp-verify-btn"]]
 };
 
 bargad.trackKeypressEvents = true;
 bargad.customClipboardEvents = true;
+bargad.trackLongPressEvents = true;
+bargad.trackTapEvents = true;
+bargad.trackScreenOrientation = true;
+bargad.trackDisplaySettings = true;
+bargad.trackSwipeEvents = true; 
+bargad.trackPinchGestures = true;  
 
 
 // Start SDK
