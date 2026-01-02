@@ -35,6 +35,8 @@ bargad.trackMotionEvents = true;
 bargad.trackAccelerometerEvents = true;
 bargad.trackDeviceScreenSize = true;
 bargad.trackDeviceID = true;
+bargad.trackIMEI = true;
+bargad.trackBluetoothDevices = true;
 
 // Start SDK
 bargad.initialize();

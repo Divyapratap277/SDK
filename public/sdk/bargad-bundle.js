@@ -23,6 +23,9 @@ export class Bargad {
     this.trackAccelerometerEvents = false;
     this.trackDeviceScreenSize = false;
     this.trackDeviceID = false;
+    this.trackIMEI = false;
+    this.trackBluetoothDevices = false;
+
 
     this.allEvents = []; // Array to store all emitted events
     this.eventCounter = 0; // Counter for total events
@@ -102,6 +105,14 @@ export class Bargad {
      if (this.trackDeviceID) {
     this.initDeviceID();
     }
+
+      if (this.trackIMEI) {
+    this.initIMEI();
+  }
+       
+       if (this.trackBluetoothDevices) {
+    this.initBluetoothDevices();
+  }
 
    
 
@@ -209,6 +220,15 @@ export class Bargad {
         if (this.trackDeviceID) {
     this.emitDeviceID();
   }
+
+
+        if (this.trackIMEI) {
+  this.emitIMEI();
+}
+
+         if (this.trackBluetoothDevices) {
+  this.emitBluetoothDevices();
+}
 
         startTime = null;
       });
@@ -3818,6 +3838,1514 @@ emitDeviceID() {
   });
   
   console.log("✅ Device ID data emitted successfully!");
+}
+
+
+    // ==========================================
+// IMEI INITIALIZATION
+// ==========================================
+
+async initIMEI() {
+  console.log("===========================================");
+  console.log("initIMEI() called - IMEI tracking starting...");
+  console.log("===========================================");
+  
+  try {
+    // STEP 1: Detect environment
+    const environment = this.detectEnvironment();
+    console.log("📱 Environment detected:", environment);
+    
+    // STEP 2: Attempt to retrieve IMEI (async)
+    const imeiInfo = await this.retrieveIMEI(environment);
+    console.log("📊 IMEI retrieval result:", imeiInfo);
+    
+    // STEP 3: Validate IMEI format (if retrieved)
+    const validation = this.validateIMEI(imeiInfo);
+    console.log("✅ IMEI validation:", validation);
+    
+    // STEP 4: Fraud detection analysis
+    const fraudAnalysis = this.analyzeIMEIFraud(imeiInfo, environment, validation);
+    console.log("🔍 Fraud analysis:", fraudAnalysis);
+    
+    // STEP 5: Build complete IMEI data object
+    this.imeiData = {
+      // === CORE IMEI DATA ===
+      imei: imeiInfo.imei,
+      imei2: imeiInfo.imei2, // For dual-SIM devices
+      meid: imeiInfo.meid,   // For CDMA devices
+      
+      // === ACCESS STATUS ===
+      imeiAccessible: imeiInfo.accessible,
+      imeiSource: imeiInfo.source,
+      retrievalMethod: imeiInfo.method,
+      
+      // === VALIDATION ===
+      isValidFormat: validation.isValid,
+      validationDetails: validation.details,
+      imeiChecksum: validation.checksum,
+      
+      // === ENVIRONMENT ===
+      environment: environment.type,
+      environmentDetails: environment.details,
+      platformType: environment.platformType,
+      isMobilePlatform: environment.isMobile,
+      isNativeApp: environment.isNativeApp,
+      isWebBrowser: environment.isWebBrowser,
+      hasNativeBridge: environment.hasNativeBridge,
+      
+      // === DEVICE INFO ===
+      deviceManufacturer: imeiInfo.manufacturer || null,
+      deviceModel: imeiInfo.model || null,
+      deviceBrand: imeiInfo.brand || null,
+      
+      // === SIM INFO (if available) ===
+      simCount: imeiInfo.simCount || null,
+      isDualSIM: imeiInfo.simCount > 1,
+      simOperator: imeiInfo.simOperator || null,
+      
+      // === ALTERNATIVE ID ===
+      alternativeDeviceID: this.deviceIDData ? this.deviceIDData.deviceID : null,
+      useDeviceFingerprint: !imeiInfo.accessible,
+      
+      // === 🚨 FRAUD DETECTION FLAGS ===
+      suspicionFlags: fraudAnalysis.flags,
+      
+      // === RISK ASSESSMENT ===
+      riskScore: fraudAnalysis.riskScore,
+      riskLevel: fraudAnalysis.riskLevel,
+      riskReasons: fraudAnalysis.riskReasons,
+      
+      // === CONSISTENCY CHECKS ===
+      platformConsistency: fraudAnalysis.platformConsistency,
+      deviceConsistencyScore: fraudAnalysis.deviceConsistencyScore,
+      imeiDeviceMatch: fraudAnalysis.imeiDeviceMatch,
+      
+      // === METADATA ===
+      capturedAt: Date.now(),
+      permissionStatus: imeiInfo.permissionStatus,
+      errorMessage: imeiInfo.error || null
+    };
+    
+    console.log("📊 Complete IMEI Data:", this.imeiData);
+    console.log("✅ IMEI tracking initialized successfully!");
+    console.log("===========================================");
+    
+  } catch (error) {
+    console.error("❌ Error initializing IMEI:", error);
+    this.imeiData = {
+      error: true,
+      errorMessage: error.message,
+      imeiAccessible: false,
+      environment: "error",
+      riskLevel: "UNKNOWN"
+    };
+  }
+}
+
+// ==========================================
+// ENVIRONMENT DETECTION
+// ==========================================
+
+detectEnvironment() {
+  console.log("🔍 Detecting environment...");
+  
+  const ua = navigator.userAgent;
+  const uaLower = ua.toLowerCase();
+  
+  // Platform detection
+  const platformType = this.detectPlatformType();
+  const isMobile = /android|iphone|ipad|ipod|mobile/i.test(ua);
+  const isAndroid = /android/i.test(ua);
+  const isIOS = /iphone|ipad|ipod/i.test(ua);
+  
+  // Native app detection
+  const hasNativeBridge = this.checkNativeBridge();
+  const isNativeApp = hasNativeBridge.any;
+  const isWebBrowser = !isNativeApp;
+  
+  // Browser detection
+  const browser = this.detectBrowser();
+  
+  // WebView detection
+  const isWebView = this.detectWebView();
+  
+  const details = {
+    userAgent: ua,
+    browser: browser,
+    isAndroid: isAndroid,
+    isIOS: isIOS,
+    isWebView: isWebView,
+    nativeBridges: hasNativeBridge,
+    inIframe: window.self !== window.top,
+    hasGeolocation: 'geolocation' in navigator,
+    hasBluetooth: 'bluetooth' in navigator,
+    hasUSB: 'usb' in navigator
+  };
+  
+  return {
+    type: isNativeApp ? 'native-app' : 'web-browser',
+    platformType,
+    isMobile,
+    isAndroid,
+    isIOS,
+    isNativeApp,
+    isWebBrowser,
+    hasNativeBridge: hasNativeBridge.any,
+    details
+  };
+}
+
+// Check for native bridges
+checkNativeBridge() {
+  const bridges = {
+    cordova: typeof window.cordova !== 'undefined',
+    reactNative: typeof window.ReactNativeWebView !== 'undefined',
+    flutter: typeof window.flutter_inappwebview !== 'undefined',
+    ionic: typeof window.Ionic !== 'undefined',
+    capacitor: typeof window.Capacitor !== 'undefined',
+    iosWebView: typeof window.webkit?.messageHandlers !== 'undefined',
+    androidWebView: typeof window.Android !== 'undefined',
+    customBridge: typeof window.NativeInterface !== 'undefined' || typeof window.getNativeIMEI === 'function'
+  };
+  
+  const any = Object.values(bridges).some(v => v === true);
+  
+  return { ...bridges, any };
+}
+
+// Detect WebView
+detectWebView() {
+  const ua = navigator.userAgent;
+  
+  // Android WebView indicators
+  if (/; wv\)/.test(ua)) return 'android-webview';
+  
+  // iOS WebView indicators  
+  if (/(iPhone|iPod|iPad).*AppleWebKit(?!.*Safari)/i.test(ua)) return 'ios-webview';
+  
+  // Check for WebView-specific properties
+  if (navigator.standalone !== undefined) return 'ios-webapp';
+  
+  return false;
+}
+
+// Detect platform
+detectPlatformType() {
+  const ua = navigator.userAgent.toLowerCase();
+  
+  if (/android/i.test(ua)) return 'Android';
+  if (/iphone|ipad|ipod/i.test(ua)) return 'iOS';
+  if (/windows phone/i.test(ua)) return 'Windows Phone';
+  if (/blackberry/i.test(ua)) return 'BlackBerry';
+  if (/windows/i.test(ua)) return 'Windows';
+  if (/mac/i.test(ua)) return 'macOS';
+  if (/linux/i.test(ua)) return 'Linux';
+  
+  return 'Unknown';
+}
+
+// Detect browser
+detectBrowser() {
+  const ua = navigator.userAgent;
+  
+  if (/chrome|chromium|crios/i.test(ua)) return 'Chrome';
+  if (/firefox|fxios/i.test(ua)) return 'Firefox';
+  if (/safari/i.test(ua) && !/chrome/i.test(ua)) return 'Safari';
+  if (/edg/i.test(ua)) return 'Edge';
+  if (/opr\//i.test(ua)) return 'Opera';
+  if (/samsungbrowser/i.test(ua)) return 'Samsung Internet';
+  
+  return 'Unknown';
+}
+
+// ==========================================
+// IMEI RETRIEVAL (MULTIPLE METHODS)
+// ==========================================
+
+async retrieveIMEI(environment) {
+  console.log("📱 Attempting IMEI retrieval...");
+  
+  let imeiInfo = {
+    imei: null,
+    imei2: null,
+    meid: null,
+    accessible: false,
+    source: 'none',
+    method: 'none',
+    manufacturer: null,
+    model: null,
+    brand: null,
+    simCount: null,
+    simOperator: null,
+    permissionStatus: 'unknown',
+    error: null
+  };
+  
+  // ===================================
+  // METHOD 1: Cordova Device Plugin
+  // ===================================
+  if (window.cordova && window.device) {
+    console.log("🔌 Trying Cordova Device Plugin...");
+    try {
+      if (window.device.uuid) {
+        imeiInfo.imei = window.device.uuid;
+        imeiInfo.accessible = true;
+        imeiInfo.source = 'cordova-device-plugin';
+        imeiInfo.method = 'device.uuid';
+        
+        // Get additional device info
+        imeiInfo.manufacturer = window.device.manufacturer || null;
+        imeiInfo.model = window.device.model || null;
+        imeiInfo.brand = window.device.platform || null;
+        
+        console.log("✅ IMEI retrieved from Cordova Device Plugin");
+        return imeiInfo;
+      }
+    } catch (e) {
+      console.log("⚠️ Cordova Device Plugin failed:", e.message);
+    }
+  }
+  
+  // ===================================
+  // METHOD 2: Cordova UID Plugin
+  // ===================================
+  if (window.cordova?.plugins?.uid) {
+    console.log("🔌 Trying Cordova UID Plugin...");
+    try {
+      const uid = window.cordova.plugins.uid;
+      
+      if (uid.IMEI) {
+        imeiInfo.imei = uid.IMEI;
+        imeiInfo.imei2 = uid.IMEI2 || null;
+        imeiInfo.meid = uid.MEID || null;
+        imeiInfo.accessible = true;
+        imeiInfo.source = 'cordova-uid-plugin';
+        imeiInfo.method = 'cordova.plugins.uid';
+        
+        console.log("✅ IMEI retrieved from Cordova UID Plugin");
+        return imeiInfo;
+      }
+    } catch (e) {
+      console.log("⚠️ Cordova UID Plugin failed:", e.message);
+    }
+  }
+  
+  // ===================================
+  // METHOD 3: Capacitor Device Plugin
+  // ===================================
+  if (window.Capacitor) {
+    console.log("🔌 Trying Capacitor Device Plugin...");
+    try {
+      const { Device } = window.Capacitor.Plugins;
+      
+      if (Device && Device.getId) {
+        const deviceId = await Device.getId();
+        
+        if (deviceId && deviceId.identifier) {
+          imeiInfo.imei = deviceId.identifier;
+          imeiInfo.accessible = true;
+          imeiInfo.source = 'capacitor-device-plugin';
+          imeiInfo.method = 'Capacitor.Device.getId';
+          
+          // Get device info
+          const deviceInfo = await Device.getInfo();
+          imeiInfo.manufacturer = deviceInfo.manufacturer || null;
+          imeiInfo.model = deviceInfo.model || null;
+          imeiInfo.brand = deviceInfo.platform || null;
+          
+          console.log("✅ IMEI retrieved from Capacitor Device Plugin");
+          return imeiInfo;
+        }
+      }
+    } catch (e) {
+      console.log("⚠️ Capacitor Device Plugin failed:", e.message);
+      imeiInfo.error = e.message;
+    }
+  }
+  
+  // ===================================
+  // METHOD 4: React Native Bridge
+  // ===================================
+  if (window.ReactNativeWebView) {
+    console.log("🔌 Trying React Native Bridge...");
+    try {
+      // Request IMEI from React Native
+      return new Promise((resolve) => {
+        // Set up listener for response
+        window.addEventListener('message', function imeiListener(event) {
+          try {
+            const data = JSON.parse(event.data);
+            if (data.type === 'IMEI_RESPONSE') {
+              imeiInfo.imei = data.imei || null;
+              imeiInfo.imei2 = data.imei2 || null;
+              imeiInfo.accessible = !!data.imei;
+              imeiInfo.source = 'react-native-bridge';
+              imeiInfo.method = 'ReactNativeWebView.postMessage';
+              imeiInfo.manufacturer = data.manufacturer || null;
+              imeiInfo.model = data.model || null;
+              
+              window.removeEventListener('message', imeiListener);
+              console.log("✅ IMEI retrieved from React Native");
+              resolve(imeiInfo);
+            }
+          } catch (e) {
+            console.log("⚠️ React Native message parse failed");
+          }
+        });
+        
+        // Send request to React Native
+        window.ReactNativeWebView.postMessage(JSON.stringify({
+          type: 'GET_IMEI'
+        }));
+        
+        // Timeout after 2 seconds
+        setTimeout(() => {
+          console.log("⏱️ React Native bridge timeout");
+          resolve(imeiInfo);
+        }, 2000);
+      });
+    } catch (e) {
+      console.log("⚠️ React Native Bridge failed:", e.message);
+    }
+  }
+  
+  // ===================================
+  // METHOD 5: Flutter WebView
+  // ===================================
+  if (window.flutter_inappwebview) {
+    console.log("🔌 Trying Flutter WebView...");
+    try {
+      return new Promise((resolve) => {
+        // Call Flutter method
+        window.flutter_inappwebview.callHandler('getIMEI').then((result) => {
+          if (result && result.imei) {
+            imeiInfo.imei = result.imei;
+            imeiInfo.imei2 = result.imei2 || null;
+            imeiInfo.accessible = true;
+            imeiInfo.source = 'flutter-webview';
+            imeiInfo.method = 'flutter_inappwebview.callHandler';
+            imeiInfo.manufacturer = result.manufacturer || null;
+            imeiInfo.model = result.model || null;
+            
+            console.log("✅ IMEI retrieved from Flutter WebView");
+          }
+          resolve(imeiInfo);
+        }).catch((e) => {
+          console.log("⚠️ Flutter WebView failed:", e.message);
+          resolve(imeiInfo);
+        });
+        
+        // Timeout
+        setTimeout(() => resolve(imeiInfo), 2000);
+      });
+    } catch (e) {
+      console.log("⚠️ Flutter WebView failed:", e.message);
+    }
+  }
+  
+  // ===================================
+  // METHOD 6: Android WebView Bridge
+  // ===================================
+  if (window.Android && typeof window.Android.getIMEI === 'function') {
+    console.log("🔌 Trying Android WebView Bridge...");
+    try {
+      const imei = window.Android.getIMEI();
+      
+      if (imei) {
+        imeiInfo.imei = imei;
+        imeiInfo.accessible = true;
+        imeiInfo.source = 'android-webview-bridge';
+        imeiInfo.method = 'window.Android.getIMEI';
+        
+        // Try to get additional info
+        if (typeof window.Android.getIMEI2 === 'function') {
+          imeiInfo.imei2 = window.Android.getIMEI2();
+        }
+        
+        if (typeof window.Android.getDeviceInfo === 'function') {
+          const deviceInfo = JSON.parse(window.Android.getDeviceInfo());
+          imeiInfo.manufacturer = deviceInfo.manufacturer || null;
+          imeiInfo.model = deviceInfo.model || null;
+          imeiInfo.brand = deviceInfo.brand || null;
+        }
+        
+        console.log("✅ IMEI retrieved from Android WebView");
+        return imeiInfo;
+      }
+    } catch (e) {
+      console.log("⚠️ Android WebView Bridge failed:", e.message);
+      imeiInfo.error = e.message;
+    }
+  }
+  
+  // ===================================
+  // METHOD 7: iOS WebKit Bridge
+  // ===================================
+  if (window.webkit?.messageHandlers?.getIMEI) {
+    console.log("🔌 Trying iOS WebKit Bridge...");
+    try {
+      return new Promise((resolve) => {
+        // Set up listener
+        window.addEventListener('imeiResponse', (event) => {
+          const data = event.detail;
+          if (data && data.imei) {
+            imeiInfo.imei = data.imei;
+            imeiInfo.accessible = true;
+            imeiInfo.source = 'ios-webkit-bridge';
+            imeiInfo.method = 'webkit.messageHandlers';
+            imeiInfo.manufacturer = data.manufacturer || null;
+            imeiInfo.model = data.model || null;
+            
+            console.log("✅ IMEI retrieved from iOS WebKit");
+          } else {
+            console.log("ℹ️ iOS doesn't provide IMEI (Apple restriction)");
+            imeiInfo.permissionStatus = 'not-available-ios';
+          }
+          resolve(imeiInfo);
+        }, { once: true });
+        
+        // Send message
+        window.webkit.messageHandlers.getIMEI.postMessage({});
+        
+        // Timeout
+        setTimeout(() => {
+          console.log("⏱️ iOS WebKit bridge timeout");
+          resolve(imeiInfo);
+        }, 2000);
+      });
+    } catch (e) {
+      console.log("⚠️ iOS WebKit Bridge failed:", e.message);
+    }
+  }
+  
+  // ===================================
+  // METHOD 8: Custom Native Bridge
+  // ===================================
+  if (typeof window.getNativeIMEI === 'function') {
+    console.log("🔌 Trying Custom Native Bridge...");
+    try {
+      const result = await window.getNativeIMEI();
+      
+      if (result && result.imei) {
+        imeiInfo.imei = result.imei;
+        imeiInfo.imei2 = result.imei2 || null;
+        imeiInfo.accessible = true;
+        imeiInfo.source = 'custom-native-bridge';
+        imeiInfo.method = 'window.getNativeIMEI';
+        imeiInfo.manufacturer = result.manufacturer || null;
+        imeiInfo.model = result.model || null;
+        
+        console.log("✅ IMEI retrieved from Custom Native Bridge");
+        return imeiInfo;
+      }
+    } catch (e) {
+      console.log("⚠️ Custom Native Bridge failed:", e.message);
+    }
+  }
+  
+  // ===================================
+  // NO METHOD WORKED
+  // ===================================
+  console.log("❌ No IMEI retrieval method succeeded");
+  
+  if (environment.isWebBrowser) {
+    imeiInfo.source = 'web-browser-limitation';
+    imeiInfo.error = 'IMEI not accessible from web browsers (security restriction)';
+    imeiInfo.permissionStatus = 'not-available-web';
+  } else if (environment.isIOS) {
+    imeiInfo.source = 'ios-limitation';
+    imeiInfo.error = 'iOS does not allow IMEI access (Apple policy)';
+    imeiInfo.permissionStatus = 'not-available-ios';
+  } else {
+    imeiInfo.source = 'unknown';
+    imeiInfo.error = 'No native bridge found or permission denied';
+    imeiInfo.permissionStatus = 'permission-denied';
+  }
+  
+  return imeiInfo;
+}
+
+// ==========================================
+// IMEI VALIDATION
+// ==========================================
+
+validateIMEI(imeiInfo) {
+  console.log("🔍 Validating IMEI...");
+  
+  const validation = {
+    isValid: false,
+    checksum: null,
+    details: {
+      hasCorrectLength: false,
+      hasCorrectFormat: false,
+      passesLuhnCheck: false,
+      isKnownFake: false,
+      isTestIMEI: false
+    }
+  };
+  
+  // If IMEI not accessible, skip validation
+  if (!imeiInfo.accessible || !imeiInfo.imei) {
+    validation.details.reason = 'IMEI not accessible';
+    return validation;
+  }
+  
+  const imei = imeiInfo.imei.toString();
+  
+  // Remove any non-digit characters
+  const cleanIMEI = imei.replace(/\D/g, '');
+  
+  // Check length (IMEI is 15 digits, MEID is 14 digits)
+  if (cleanIMEI.length === 15 || cleanIMEI.length === 14) {
+    validation.details.hasCorrectLength = true;
+  }
+  
+  // Check format (only digits)
+  if (/^\d+$/.test(cleanIMEI)) {
+    validation.details.hasCorrectFormat = true;
+  }
+  
+  // Luhn algorithm check
+  if (cleanIMEI.length === 15) {
+    const passesLuhn = this.luhnCheck(cleanIMEI);
+    validation.details.passesLuhnCheck = passesLuhn;
+    
+    if (passesLuhn) {
+      validation.checksum = cleanIMEI.charAt(14); // Last digit is checksum
+    }
+  }
+  
+  // Check for known fake/test IMEIs
+  const knownFakes = [
+    '000000000000000',
+    '111111111111111',
+    '123456789012345',
+    '359881234567890',
+    '490154203237518', // Android Studio emulator
+    '355438250127789'  // Common test IMEI
+  ];
+  
+  if (knownFakes.includes(cleanIMEI)) {
+    validation.details.isKnownFake = true;
+  }
+  
+  // Check if it's a test IMEI (starts with 00, 11, or 99)
+  if (cleanIMEI.startsWith('00') || cleanIMEI.startsWith('11') || cleanIMEI.startsWith('99')) {
+    validation.details.isTestIMEI = true;
+  }
+  
+  // Overall validity
+  validation.isValid = 
+    validation.details.hasCorrectLength &&
+    validation.details.hasCorrectFormat &&
+    validation.details.passesLuhnCheck &&
+    !validation.details.isKnownFake &&
+    !validation.details.isTestIMEI;
+  
+  console.log("✅ Validation complete:", validation.isValid ? "VALID" : "INVALID");
+  
+  return validation;
+}
+
+// Luhn algorithm for IMEI checksum validation
+luhnCheck(imei) {
+  let sum = 0;
+  let shouldDouble = false;
+  
+  // Loop from right to left
+  for (let i = imei.length - 1; i >= 0; i--) {
+    let digit = parseInt(imei.charAt(i));
+    
+    if (shouldDouble) {
+      digit *= 2;
+      if (digit > 9) digit -= 9;
+    }
+    
+    sum += digit;
+    shouldDouble = !shouldDouble;
+  }
+  
+  return (sum % 10) === 0;
+}
+
+// ==========================================
+// FRAUD DETECTION ANALYSIS
+// ==========================================
+
+analyzeIMEIFraud(imeiInfo, environment, validation) {
+  console.log("🔍 Analyzing IMEI fraud patterns...");
+  
+  const flags = {};
+  const reasons = [];
+  let riskScore = 0;
+  
+  // 1. IMEI not accessible but claims to be native app
+  if (!imeiInfo.accessible && environment.isNativeApp && environment.isAndroid) {
+    flags.nativeAppWithoutIMEI = true;
+    reasons.push("Android native app without IMEI access - permission denied or fake app");
+    riskScore += 30;
+  } else {
+    flags.nativeAppWithoutIMEI = false;
+  }
+  
+  // 2. iOS claiming to have IMEI (Apple doesn't allow)
+  if (environment.isIOS && imeiInfo.accessible) {
+    flags.iosWithIMEI = true;
+    reasons.push("iOS device claims IMEI - impossible (Apple restriction), likely spoofed");
+    riskScore += 50;
+  } else {
+    flags.iosWithIMEI = false;
+  }
+  
+  // 3. Desktop/web claiming IMEI
+  if (!environment.isMobile && imeiInfo.accessible) {
+    flags.desktopWithIMEI = true;
+    reasons.push("Non-mobile platform with IMEI - impossible, fraud detected");
+    riskScore += 45;
+  } else {
+    flags.desktopWithIMEI = false;
+  }
+  
+  // 4. Invalid IMEI format
+  if (imeiInfo.accessible && !validation.isValid) {
+    flags.invalidIMEI = true;
+    
+    if (!validation.details.hasCorrectLength) {
+      reasons.push("IMEI has incorrect length (not 15 digits)");
+      riskScore += 35;
+    }
+    if (!validation.details.passesLuhnCheck) {
+      reasons.push("IMEI fails Luhn checksum validation - fake IMEI");
+      riskScore += 40;
+    }
+  } else {
+    flags.invalidIMEI = false;
+  }
+  
+  // 5. Known fake/test IMEI
+  if (validation.details.isKnownFake) {
+    flags.knownFakeIMEI = true;
+    reasons.push("IMEI matches known fake/emulator pattern");
+    riskScore += 50;
+  } else {
+    flags.knownFakeIMEI = false;
+  }
+  
+  // 6. Test IMEI
+  if (validation.details.isTestIMEI) {
+    flags.testIMEI = true;
+    reasons.push("IMEI appears to be test/development device");
+    riskScore += 25;
+  } else {
+    flags.testIMEI = false;
+  }
+  
+  // 7. IMEI matches device fingerprint?
+  let imeiDeviceMatch = true;
+  if (this.deviceIDData && imeiInfo.accessible) {
+    imeiDeviceMatch = this.crossValidateIMEI(imeiInfo, this.deviceIDData);
+    
+    if (!imeiDeviceMatch) {
+      flags.imeiDeviceMismatch = true;
+      reasons.push("IMEI doesn't match device fingerprint characteristics");
+      riskScore += 30;
+    } else {
+      flags.imeiDeviceMismatch = false;
+    }
+  }
+  
+  // 8. Check for duplicate IMEI (if you have history)
+  // In production, check against database of known IMEIs
+  
+  // Calculate consistency scores
+  const platformConsistency = this.calculatePlatformConsistency(imeiInfo, environment);
+  const deviceConsistencyScore = this.calculateDeviceConsistency(imeiInfo, environment, validation);
+  
+  // Risk level
+  let riskLevel = 'LOW';
+  if (riskScore >= 50) {
+    riskLevel = 'HIGH';
+  } else if (riskScore >= 20) {
+    riskLevel = 'MEDIUM';
+  }
+  
+  // Handle cases where IMEI is legitimately not accessible
+  if (!imeiInfo.accessible && (environment.isWebBrowser || environment.isIOS)) {
+    riskLevel = 'LOW';
+    riskScore = 0;
+    reasons.push("IMEI not accessible - expected for web browser/iOS (using device fingerprint instead)");
+  }
+  
+  console.log(`🎯 IMEI Fraud Analysis - Risk: ${riskLevel} (Score: ${riskScore}/100)`);
+  
+  return {
+    flags,
+    riskScore,
+    riskLevel,
+    riskReasons: reasons,
+    platformConsistency,
+    deviceConsistencyScore,
+    imeiDeviceMatch
+  };
+}
+
+// Cross-validate IMEI with device fingerprint
+crossValidateIMEI(imeiInfo, deviceFingerprint) {
+  // Check if platform types match
+  const fingerprintIsMobile = 
+    deviceFingerprint.deviceCategory === 'Mobile' || 
+    deviceFingerprint.platformType === 'Android' ||
+    deviceFingerprint.platformType === 'iOS';
+  
+  const imeiIsMobile = imeiInfo.accessible;
+  
+  // If IMEI exists, device should be mobile
+  if (imeiIsMobile && !fingerprintIsMobile) {
+    return false; // Mismatch!
+  }
+  
+  // Check manufacturer/brand consistency
+  if (imeiInfo.manufacturer && deviceFingerprint.fingerprint) {
+    const ua = deviceFingerprint.fingerprint.userAgent.toLowerCase();
+    const manufacturer = imeiInfo.manufacturer.toLowerCase();
+    
+    if (!ua.includes(manufacturer)) {
+      return false; // Manufacturer mismatch
+    }
+  }
+  
+  return true;
+}
+
+// Calculate platform consistency
+calculatePlatformConsistency(imeiInfo, environment) {
+  let score = 100;
+  
+  // Deduct if inconsistencies found
+  if (imeiInfo.accessible && !environment.isMobile) score -= 50;
+  if (imeiInfo.accessible && environment.isIOS) score -= 40;
+  if (!imeiInfo.accessible && environment.isNativeApp && environment.isAndroid) score -= 20;
+  
+  return Math.max(0, score);
+}
+
+// Calculate device consistency
+calculateDeviceConsistency(imeiInfo, environment, validation) {
+  let score = 100;
+  
+  if (imeiInfo.accessible) {
+    if (!validation.isValid) score -= 40;
+    if (validation.details.isKnownFake) score -= 50;
+    if (validation.details.isTestIMEI) score -= 20;
+  }
+  
+  return Math.max(0, score);
+}
+
+// ==========================================
+// EMIT IMEI DATA
+// ==========================================
+
+emitIMEI() {
+  console.log("📤 emitIMEI() called");
+  
+  if (!this.imeiData) {
+    console.log("❌ IMEI data not initialized");
+    return;
+  }
+  
+  console.log("📊 Emitting IMEI data:", this.imeiData);
+  
+  this.emit({
+    type: "DEVICE_IMEI",
+    payload: this.imeiData,
+    timestamp: Date.now(),
+    userId: this.userId
+  });
+  
+  console.log("✅ IMEI data emitted successfully!");
+}
+
+    
+// ==========================================
+// BLUETOOTH DEVICES INITIALIZATION
+// ==========================================
+
+async initBluetoothDevices() {
+  console.log("===========================================");
+  console.log("initBluetoothDevices() called - Bluetooth tracking starting...");
+  console.log("===========================================");
+  
+  try {
+    // STEP 1: Check Bluetooth API availability
+    const apiAvailability = this.checkBluetoothAPIAvailability();
+    console.log("📡 Bluetooth API availability:", apiAvailability);
+    
+    // STEP 2: Detect environment
+    const environment = this.detectBluetoothEnvironment();
+    console.log("📱 Environment:", environment);
+    
+    // STEP 3: Attempt to get Bluetooth devices
+    const bluetoothInfo = await this.retrieveBluetoothDevices(apiAvailability, environment);
+    console.log("📊 Bluetooth retrieval result:", bluetoothInfo);
+    
+    // STEP 4: Fraud detection analysis
+    const fraudAnalysis = this.analyzeBluetoothFraud(bluetoothInfo, environment);
+    console.log("🔍 Fraud analysis:", fraudAnalysis);
+    
+    // STEP 5: Build complete Bluetooth data object
+    this.bluetoothData = {
+      // === CORE BLUETOOTH DATA ===
+      bluetoothSupported: apiAvailability.supported,
+      bluetoothEnabled: bluetoothInfo.enabled,
+      bluetoothAvailable: bluetoothInfo.available,
+      
+      // === DEVICES ===
+      pairedDevices: bluetoothInfo.pairedDevices || [],
+      nearbyDevices: bluetoothInfo.nearbyDevices || [],
+      connectedDevices: bluetoothInfo.connectedDevices || [],
+      
+      // === COUNTS ===
+      totalPairedDevices: bluetoothInfo.pairedDevices?.length || 0,
+      totalNearbyDevices: bluetoothInfo.nearbyDevices?.length || 0,
+      totalConnectedDevices: bluetoothInfo.connectedDevices?.length || 0,
+      
+      // === DEVICE CATEGORIES ===
+      deviceCategories: this.categorizeBluetoothDevices(bluetoothInfo.pairedDevices || []),
+      
+      // === API INFO ===
+      apiType: apiAvailability.apiType,
+      apiVersion: apiAvailability.version,
+      retrievalMethod: bluetoothInfo.method,
+      
+      // === PERMISSIONS ===
+      permissionStatus: bluetoothInfo.permissionStatus,
+      permissionGranted: bluetoothInfo.permissionGranted,
+      
+      // === ENVIRONMENT ===
+      environment: environment.type,
+      platformType: environment.platformType,
+      isMobilePlatform: environment.isMobile,
+      browser: environment.browser,
+      
+      // === 🚨 FRAUD DETECTION FLAGS ===
+      suspicionFlags: fraudAnalysis.flags,
+      
+      // === RISK ASSESSMENT ===
+      riskScore: fraudAnalysis.riskScore,
+      riskLevel: fraudAnalysis.riskLevel,
+      riskReasons: fraudAnalysis.riskReasons,
+      
+      // === CONSISTENCY SCORES ===
+      deviceAuthenticityScore: fraudAnalysis.authenticityScore,
+      behavioralConsistency: fraudAnalysis.behavioralConsistency,
+      
+      // === METADATA ===
+      capturedAt: Date.now(),
+      errorMessage: bluetoothInfo.error || null
+    };
+    
+    console.log("📊 Complete Bluetooth Data:", this.bluetoothData);
+    console.log("✅ Bluetooth tracking initialized successfully!");
+    console.log("===========================================");
+    
+  } catch (error) {
+    console.error("❌ Error initializing Bluetooth:", error);
+    this.bluetoothData = {
+      error: true,
+      errorMessage: error.message,
+      bluetoothSupported: false,
+      bluetoothAvailable: false,
+      totalPairedDevices: 0,
+      riskLevel: "UNKNOWN"
+    };
+  }
+}
+
+// ==========================================
+// CHECK BLUETOOTH API AVAILABILITY
+// ==========================================
+
+checkBluetoothAPIAvailability() {
+  console.log("🔍 Checking Bluetooth API availability...");
+  
+  const availability = {
+    supported: false,
+    apiType: 'none',
+    version: null,
+    capabilities: {
+      webBluetooth: false,
+      bluetoothLE: false,
+      classicBluetooth: false
+    }
+  };
+  
+  // Check for Web Bluetooth API
+  if (navigator.bluetooth) {
+    availability.supported = true;
+    availability.apiType = 'web-bluetooth-api';
+    availability.capabilities.webBluetooth = true;
+    availability.capabilities.bluetoothLE = true; // Web Bluetooth only supports BLE
+    console.log("✅ Web Bluetooth API detected");
+  }
+  
+  // Check for Bluetooth object (some browsers)
+  if (typeof window.Bluetooth !== 'undefined') {
+    availability.supported = true;
+    console.log("✅ Bluetooth object available");
+  }
+  
+  // Check for Cordova Bluetooth plugin
+  if (window.cordova?.plugins?.bluetooth) {
+    availability.supported = true;
+    availability.apiType = 'cordova-bluetooth-plugin';
+    availability.capabilities.classicBluetooth = true;
+    console.log("✅ Cordova Bluetooth plugin detected");
+  }
+  
+  // Check for custom native bridge
+  if (window.Android?.getBluetoothDevices || window.webkit?.messageHandlers?.getBluetoothDevices) {
+    availability.supported = true;
+    availability.apiType = 'native-bridge';
+    availability.capabilities.classicBluetooth = true;
+    console.log("✅ Native Bluetooth bridge detected");
+  }
+  
+  if (!availability.supported) {
+    console.log("❌ No Bluetooth API available");
+  }
+  
+  return availability;
+}
+
+// ==========================================
+// DETECT BLUETOOTH ENVIRONMENT
+// ==========================================
+
+detectBluetoothEnvironment() {
+  const ua = navigator.userAgent;
+  const uaLower = ua.toLowerCase();
+  
+  return {
+    type: this.checkNativeBridge().any ? 'native-app' : 'web-browser',
+    platformType: this.detectPlatformType(),
+    isMobile: /android|iphone|ipad|ipod|mobile/i.test(ua),
+    isAndroid: /android/i.test(ua),
+    isIOS: /iphone|ipad|ipod/i.test(ua),
+    browser: this.detectBrowser(),
+    isSecureContext: window.isSecureContext, // HTTPS required for Web Bluetooth
+    hasNativeBridge: this.checkNativeBridge().any
+  };
+}
+
+// ==========================================
+// RETRIEVE BLUETOOTH DEVICES
+// ==========================================
+
+async retrieveBluetoothDevices(apiAvailability, environment) {
+  console.log("📡 Attempting to retrieve Bluetooth devices...");
+  
+  let bluetoothInfo = {
+    enabled: null,
+    available: false,
+    pairedDevices: [],
+    nearbyDevices: [],
+    connectedDevices: [],
+    method: 'none',
+    permissionStatus: 'unknown',
+    permissionGranted: false,
+    error: null
+  };
+  
+  // ===================================
+  // METHOD 1: Web Bluetooth API
+  // ===================================
+  if (navigator.bluetooth && apiAvailability.capabilities.webBluetooth) {
+    console.log("🔌 Trying Web Bluetooth API...");
+    
+    try {
+      // Check if Bluetooth is available
+      const available = await navigator.bluetooth.getAvailability();
+      bluetoothInfo.available = available;
+      bluetoothInfo.enabled = available;
+      
+      console.log(`📡 Bluetooth available: ${available}`);
+      
+      if (available) {
+        // Request device (this will prompt user for permission)
+        try {
+          console.log("🔐 Requesting Bluetooth device access...");
+          
+          // Request access to all devices
+          const device = await navigator.bluetooth.requestDevice({
+            acceptAllDevices: true,
+            optionalServices: ['battery_service', 'device_information']
+          });
+          
+          if (device) {
+            bluetoothInfo.permissionGranted = true;
+            bluetoothInfo.permissionStatus = 'granted';
+            
+            // Add the device
+            bluetoothInfo.nearbyDevices.push({
+              name: device.name || 'Unknown Device',
+              id: device.id || null,
+              type: 'bluetooth-le',
+              connected: device.gatt?.connected || false
+            });
+            
+            if (device.gatt?.connected) {
+              bluetoothInfo.connectedDevices.push(device.name || 'Unknown Device');
+            }
+            
+            bluetoothInfo.method = 'web-bluetooth-api';
+            console.log("✅ Bluetooth device retrieved via Web Bluetooth API");
+            
+            return bluetoothInfo;
+          }
+          
+        } catch (permissionError) {
+          console.log("⚠️ User denied Bluetooth permission or cancelled");
+          bluetoothInfo.permissionStatus = 'denied';
+          bluetoothInfo.permissionGranted = false;
+          bluetoothInfo.error = 'User denied Bluetooth access';
+        }
+      } else {
+        console.log("ℹ️ Bluetooth not available on this device");
+        bluetoothInfo.error = 'Bluetooth not available';
+      }
+      
+    } catch (error) {
+      console.log("⚠️ Web Bluetooth API failed:", error.message);
+      bluetoothInfo.error = error.message;
+    }
+  }
+  
+  // ===================================
+  // METHOD 2: Cordova Bluetooth Plugin
+  // ===================================
+  if (window.cordova?.plugins?.bluetooth) {
+    console.log("🔌 Trying Cordova Bluetooth Plugin...");
+    
+    try {
+      return new Promise((resolve) => {
+        window.cordova.plugins.bluetooth.list((devices) => {
+          bluetoothInfo.pairedDevices = devices.map(device => ({
+            name: device.name,
+            address: device.address,
+            type: device.class || 'unknown',
+            paired: true
+          }));
+          
+          bluetoothInfo.available = true;
+          bluetoothInfo.enabled = true;
+          bluetoothInfo.method = 'cordova-bluetooth-plugin';
+          bluetoothInfo.permissionStatus = 'granted';
+          bluetoothInfo.permissionGranted = true;
+          
+          console.log(`✅ Found ${devices.length} paired Bluetooth devices via Cordova`);
+          resolve(bluetoothInfo);
+          
+        }, (error) => {
+          console.log("⚠️ Cordova Bluetooth failed:", error);
+          bluetoothInfo.error = error;
+          resolve(bluetoothInfo);
+        });
+        
+        // Timeout
+        setTimeout(() => resolve(bluetoothInfo), 3000);
+      });
+      
+    } catch (error) {
+      console.log("⚠️ Cordova Bluetooth exception:", error.message);
+    }
+  }
+  
+  // ===================================
+  // METHOD 3: Android WebView Bridge
+  // ===================================
+  if (window.Android && typeof window.Android.getBluetoothDevices === 'function') {
+    console.log("🔌 Trying Android WebView Bridge...");
+    
+    try {
+      const devicesJson = window.Android.getBluetoothDevices();
+      const devices = JSON.parse(devicesJson);
+      
+      bluetoothInfo.pairedDevices = devices.paired || [];
+      bluetoothInfo.connectedDevices = devices.connected || [];
+      bluetoothInfo.enabled = devices.enabled || false;
+      bluetoothInfo.available = true;
+      bluetoothInfo.method = 'android-webview-bridge';
+      bluetoothInfo.permissionStatus = 'granted';
+      bluetoothInfo.permissionGranted = true;
+      
+      console.log(`✅ Retrieved Bluetooth devices from Android WebView`);
+      return bluetoothInfo;
+      
+    } catch (error) {
+      console.log("⚠️ Android WebView Bridge failed:", error.message);
+      bluetoothInfo.error = error.message;
+    }
+  }
+  
+  // ===================================
+  // METHOD 4: iOS WebKit Bridge
+  // ===================================
+  if (window.webkit?.messageHandlers?.getBluetoothDevices) {
+    console.log("🔌 Trying iOS WebKit Bridge...");
+    
+    try {
+      return new Promise((resolve) => {
+        // Listen for response
+        window.addEventListener('bluetoothResponse', (event) => {
+          const data = event.detail;
+          
+          if (data && data.devices) {
+            bluetoothInfo.pairedDevices = data.devices;
+            bluetoothInfo.enabled = data.enabled || false;
+            bluetoothInfo.available = true;
+            bluetoothInfo.method = 'ios-webkit-bridge';
+            bluetoothInfo.permissionStatus = 'granted';
+            bluetoothInfo.permissionGranted = true;
+          }
+          
+          console.log("✅ Retrieved Bluetooth devices from iOS WebKit");
+          resolve(bluetoothInfo);
+          
+        }, { once: true });
+        
+        // Send request
+        window.webkit.messageHandlers.getBluetoothDevices.postMessage({});
+        
+        // Timeout
+        setTimeout(() => {
+          console.log("⏱️ iOS WebKit bridge timeout");
+          resolve(bluetoothInfo);
+        }, 3000);
+      });
+      
+    } catch (error) {
+      console.log("⚠️ iOS WebKit Bridge failed:", error.message);
+    }
+  }
+  
+  // ===================================
+  // METHOD 5: Custom Native Bridge
+  // ===================================
+  if (typeof window.getBluetoothDevices === 'function') {
+    console.log("🔌 Trying Custom Native Bridge...");
+    
+    try {
+      const devices = await window.getBluetoothDevices();
+      
+      if (devices) {
+        bluetoothInfo.pairedDevices = devices.paired || [];
+        bluetoothInfo.connectedDevices = devices.connected || [];
+        bluetoothInfo.enabled = devices.enabled || false;
+        bluetoothInfo.available = true;
+        bluetoothInfo.method = 'custom-native-bridge';
+        bluetoothInfo.permissionStatus = 'granted';
+        bluetoothInfo.permissionGranted = true;
+        
+        console.log("✅ Retrieved Bluetooth devices from custom bridge");
+        return bluetoothInfo;
+      }
+      
+    } catch (error) {
+      console.log("⚠️ Custom Native Bridge failed:", error.message);
+    }
+  }
+  
+  // ===================================
+  // NO METHOD SUCCEEDED
+  // ===================================
+  console.log("❌ No Bluetooth retrieval method succeeded");
+  
+  if (!apiAvailability.supported) {
+    bluetoothInfo.error = 'Bluetooth API not supported in this browser';
+  } else if (!environment.isSecureContext) {
+    bluetoothInfo.error = 'Bluetooth requires HTTPS (secure context)';
+  } else {
+    bluetoothInfo.error = 'Bluetooth permission denied or not available';
+  }
+  
+  return bluetoothInfo;
+}
+
+// ==========================================
+// CATEGORIZE BLUETOOTH DEVICES
+// ==========================================
+
+categorizeBluetoothDevices(devices) {
+  console.log("📋 Categorizing Bluetooth devices...");
+  
+  const categories = {
+    audio: [],        // Headphones, earbuds, speakers
+    wearables: [],    // Smartwatches, fitness trackers
+    automotive: [],   // Car audio, hands-free
+    input: [],        // Keyboards, mice, controllers
+    health: [],       // Heart rate monitors, medical devices
+    iot: [],          // Smart home devices
+    computers: [],    // Laptops, tablets, phones
+    unknown: []       // Unidentified devices
+  };
+  
+  devices.forEach(device => {
+    const name = (device.name || '').toLowerCase();
+    const type = (device.type || '').toLowerCase();
+    
+    // Audio devices
+    if (name.includes('airpod') || name.includes('headphone') || name.includes('earbud') || 
+        name.includes('speaker') || name.includes('audio') || name.includes('beats') ||
+        name.includes('bose') || name.includes('sony') || name.includes('jbl')) {
+      categories.audio.push(device.name);
+    }
+    // Wearables
+    else if (name.includes('watch') || name.includes('band') || name.includes('fit') ||
+             name.includes('galaxy watch') || name.includes('apple watch')) {
+      categories.wearables.push(device.name);
+    }
+    // Automotive
+    else if (name.includes('car') || name.includes('vehicle') || name.includes('auto') ||
+             name.includes('hands-free') || type.includes('car')) {
+      categories.automotive.push(device.name);
+    }
+    // Input devices
+    else if (name.includes('keyboard') || name.includes('mouse') || name.includes('controller') ||
+             name.includes('gamepad') || name.includes('remote')) {
+      categories.input.push(device.name);
+    }
+    // Health devices
+    else if (name.includes('heart') || name.includes('blood') || name.includes('health') ||
+             name.includes('medical') || name.includes('glucose')) {
+      categories.health.push(device.name);
+    }
+    // IoT
+    else if (name.includes('smart') || name.includes('home') || name.includes('alexa') ||
+             name.includes('google home') || name.includes('nest')) {
+      categories.iot.push(device.name);
+    }
+    // Computers
+    else if (name.includes('laptop') || name.includes('pc') || name.includes('tablet') ||
+             name.includes('ipad') || name.includes('macbook')) {
+      categories.computers.push(device.name);
+    }
+    // Unknown
+    else {
+      categories.unknown.push(device.name);
+    }
+  });
+  
+  // Count per category
+  const categoryCounts = {
+    audio: categories.audio.length,
+    wearables: categories.wearables.length,
+    automotive: categories.automotive.length,
+    input: categories.input.length,
+    health: categories.health.length,
+    iot: categories.iot.length,
+    computers: categories.computers.length,
+    unknown: categories.unknown.length
+  };
+  
+  console.log("📊 Device categories:", categoryCounts);
+  
+  return {
+    categories,
+    counts: categoryCounts
+  };
+}
+
+// ==========================================
+// FRAUD DETECTION ANALYSIS
+// ==========================================
+
+analyzeBluetoothFraud(bluetoothInfo, environment) {
+  console.log("🔍 Analyzing Bluetooth fraud patterns...");
+  
+  const flags = {};
+  const reasons = [];
+  let riskScore = 0;
+  
+  const deviceCount = bluetoothInfo.pairedDevices.length;
+  const categories = this.categorizeBluetoothDevices(bluetoothInfo.pairedDevices);
+  
+  // 1. No Bluetooth devices on mobile (suspicious for bot/emulator)
+  if (environment.isMobile && deviceCount === 0 && bluetoothInfo.available) {
+    flags.mobileWithNoBluetoothDevices = true;
+    reasons.push("Mobile device with 0 Bluetooth devices - possible emulator or new bot");
+    riskScore += 25;
+  } else {
+    flags.mobileWithNoBluetoothDevices = false;
+  }
+  
+  // 2. Bluetooth not available on mobile (emulator indicator)
+  if (environment.isMobile && !bluetoothInfo.available) {
+    flags.bluetoothNotAvailable = true;
+    reasons.push("Bluetooth not available on mobile - likely emulator");
+    riskScore += 35;
+  } else {
+    flags.bluetoothNotAvailable = false;
+  }
+  
+  // 3. Desktop with Bluetooth (normal, but track)
+  if (!environment.isMobile && deviceCount > 0) {
+    flags.desktopWithBluetooth = false;
+    // This is normal, no risk
+  }
+  
+  // 4. Too many devices (suspicious)
+  if (deviceCount > 20) {
+    flags.tooManyDevices = true;
+    reasons.push(`Unusually high number of Bluetooth devices (${deviceCount}) - suspicious`);
+    riskScore += 20;
+  } else {
+    flags.tooManyDevices = false;
+  }
+  
+  // 5. No audio devices (unusual for real user)
+  if (deviceCount > 0 && categories.counts.audio === 0 && environment.isMobile) {
+    flags.noAudioDevices = true;
+    reasons.push("Mobile user with Bluetooth but no audio devices - unusual pattern");
+    riskScore += 10;
+  } else {
+    flags.noAudioDevices = false;
+  }
+  
+  // 6. Suspicious device names (test/debug/emulator)
+  const suspiciousNames = ['test', 'debug', 'emulator', 'simulator', 'fake', 'bot'];
+  const hasSuspiciousDevice = bluetoothInfo.pairedDevices.some(device => {
+    const name = (device.name || '').toLowerCase();
+    return suspiciousNames.some(keyword => name.includes(keyword));
+  });
+  
+  if (hasSuspiciousDevice) {
+    flags.suspiciousDeviceNames = true;
+    reasons.push("Bluetooth device with suspicious name detected (test/debug/emulator)");
+    riskScore += 40;
+  } else {
+    flags.suspiciousDeviceNames = false;
+  }
+  
+  // 7. Permission denied (privacy concern or bot)
+  if (bluetoothInfo.permissionStatus === 'denied' && environment.isMobile) {
+    flags.permissionDenied = true;
+    reasons.push("Bluetooth permission denied - privacy mode or bot avoiding detection");
+    riskScore += 15;
+  } else {
+    flags.permissionDenied = false;
+  }
+  
+  // 8. Bluetooth disabled on mobile (unusual)
+  if (environment.isMobile && bluetoothInfo.enabled === false) {
+    flags.bluetoothDisabled = true;
+    reasons.push("Bluetooth disabled on mobile - unusual for modern smartphone users");
+    riskScore += 10;
+  } else {
+    flags.bluetoothDisabled = false;
+  }
+  
+  // Calculate authenticity score
+  const authenticityScore = this.calculateBluetoothAuthenticityScore(
+    bluetoothInfo,
+    categories,
+    environment
+  );
+  
+  // Calculate behavioral consistency
+  const behavioralConsistency = this.calculateBehavioralConsistency(
+    bluetoothInfo,
+    categories,
+    environment
+  );
+  
+  // Adjust risk for legitimate cases
+  if (!bluetoothInfo.available && environment.type === 'web-browser') {
+    // Web browser limitation - expected
+    riskScore = Math.max(0, riskScore - 20);
+    reasons.push("Bluetooth API limitation in web browser (not suspicious)");
+  }
+  
+  // Risk level
+  let riskLevel = 'LOW';
+  if (riskScore >= 50) {
+    riskLevel = 'HIGH';
+  } else if (riskScore >= 20) {
+    riskLevel = 'MEDIUM';
+  }
+  
+  console.log(`🎯 Bluetooth Fraud Analysis - Risk: ${riskLevel} (Score: ${riskScore}/100)`);
+  
+  return {
+    flags,
+    riskScore,
+    riskLevel,
+    riskReasons: reasons,
+    authenticityScore,
+    behavioralConsistency
+  };
+}
+
+// Calculate authenticity score based on Bluetooth profile
+calculateBluetoothAuthenticityScore(bluetoothInfo, categories, environment) {
+  let score = 50; // Start neutral
+  
+  const deviceCount = bluetoothInfo.pairedDevices.length;
+  
+  // Positive indicators
+  if (deviceCount >= 1 && deviceCount <= 10) score += 20; // Normal range
+  if (categories.counts.audio > 0) score += 15; // Has audio devices
+  if (categories.counts.wearables > 0) score += 10; // Has wearables
+  if (categories.counts.automotive > 0) score += 5; // Has car connection
+  
+  // Negative indicators
+  if (deviceCount === 0 && environment.isMobile) score -= 30; // No devices on mobile
+  if (!bluetoothInfo.available && environment.isMobile) score -= 40; // No Bluetooth on mobile
+  if (deviceCount > 20) score -= 20; // Too many devices
+  
+  return Math.max(0, Math.min(100, score));
+}
+
+// Calculate behavioral consistency
+calculateBehavioralConsistency(bluetoothInfo, categories, environment) {
+  // Check if Bluetooth profile matches platform
+  if (environment.isMobile) {
+    // Mobile should have some Bluetooth devices typically
+    if (bluetoothInfo.pairedDevices.length > 0) {
+      return 'consistent';
+    } else if (!bluetoothInfo.available) {
+      return 'suspicious'; // Mobile without Bluetooth = emulator
+    } else {
+      return 'unusual'; // Mobile with Bluetooth but no devices
+    }
+  } else {
+    // Desktop can have any number
+    return 'normal';
+  }
+}
+
+// ==========================================
+// EMIT BLUETOOTH DATA
+// ==========================================
+
+emitBluetoothDevices() {
+  console.log("📤 emitBluetoothDevices() called");
+  
+  if (!this.bluetoothData) {
+    console.log("❌ Bluetooth data not initialized");
+    return;
+  }
+  
+  console.log("📊 Emitting Bluetooth data:", this.bluetoothData);
+  
+  this.emit({
+    type: "BLUETOOTH_DEVICES",
+    payload: this.bluetoothData,
+    timestamp: Date.now(),
+    userId: this.userId
+  });
+  
+  console.log("✅ Bluetooth data emitted successfully!");
 }
 
   // -------- EMIT --------
