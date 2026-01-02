@@ -30,7 +30,11 @@ bargad.trackPinchGestures = true;
 bargad.trackAmbientLight = true;
 bargad.trackDeviceLocation = true;
 bargad.trackGyroscope = true; 
-
+bargad.trackProximitySensor = true;
+bargad.trackMotionEvents = true;
+bargad.trackAccelerometerEvents = true;
+bargad.trackDeviceScreenSize = true;
+bargad.trackDeviceID = true;
 
 // Start SDK
 bargad.initialize();

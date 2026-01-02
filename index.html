@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bargad.AI SDK - Form Test</title>
+
     <style>
         * {
             margin: 0;
@@ -14,21 +15,43 @@
         body { 
             font-family: Arial, sans-serif;
             background: #f8f9fa;
-            padding: 20px;
         }
 
-        h1 {
-            text-align: center;
-            margin-bottom: 10px;
-            font-size: 28px;
+        /* Header with logo */
+        .header {
+            background: white;
+            padding: 15px 30px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .logo {
+            height: 80px;
+            width: auto;
+            object-fit: contain;
+        }
+
+        .header-text {
+            flex: 1;
+        }
+
+        .header-text h1 {
+            font-size: 24px;
             color: #2d5016;
+            margin: 0;
         }
 
-        .subtitle {
-            text-align: center;
+        .header-text h1 span {
             color: #4CAF50;
-            margin-bottom: 30px;
+        }
+
+        .header-text p {
             font-size: 14px;
+            color: #666;
+            margin: 0;
         }
 
         /* Main container with two columns */
@@ -38,6 +61,7 @@
             gap: 30px;
             max-width: 1400px;
             margin: 0 auto;
+            padding: 0 20px 20px 20px;
         }
 
         /* Left column - Form */
@@ -46,6 +70,14 @@
             padding: 30px;
             border-radius: 12px;
             box-shadow: 0 2px 8px rgba(76, 175, 80, 0.1);
+        }
+
+        .form-section h2 {
+            font-size: 20px;
+            color: #2d5016;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e8f5e9;
         }
 
         form {
@@ -302,8 +334,25 @@
 
         /* Responsive design */
         @media (max-width: 968px) {
+            .header {
+                padding: 10px 15px;
+            }
+
+            .logo {
+                height: 35px;
+            }
+
+            .header-text h1 {
+                font-size: 18px;
+            }
+
+            .header-text p {
+                font-size: 12px;
+            }
+
             .container {
                 grid-template-columns: 1fr;
+                padding: 0 10px 20px 10px;
             }
 
             .form-row {
@@ -315,34 +364,22 @@
                 max-height: 500px;
             }
         }
-
-        /* Logo/Branding */
-        .logo {
-            text-align: center;
-            margin-bottom: 20px;
-        }
-
-        .logo-text {
-            font-size: 32px;
-            font-weight: bold;
-            color: #2d5016;
-        }
-
-        .logo-text span {
-            color: #4CAF50;
-        }
     </style>
 </head>
 <body>
-    <div class="logo">
-        <div class="logo-text">🌳 Bargad<span>.AI</span></div>
-    </div>
-    <h1>SDK Event Monitoring System</h1>
-    <p class="subtitle">Fill the form and watch SDK events appear in real-time</p>
+    <!-- Header with Logo -->
+    <header class="header">
+        <img src="public/images/Bargad-logo.jpeg" alt="Bargad.ai Logo" class="logo">
+        <div class="header-text">
+            <h1>Bargad<span>.AI</span></h1>
+            <p>SDK Event Monitoring System</p>
+        </div>
+    </header>
 
     <div class="container">
         <!-- LEFT: Form Section -->
         <div class="form-section">
+            <h2>Test Form</h2>
             <form id="test-form">
                 <!-- Row 1: First Name, Middle Name -->
                 <div class="form-row">
@@ -470,7 +507,7 @@
         <div class="json-section">
             <div class="json-header">
                 <h2>
-                    📊 SDK Events 
+                     SDK Events 
                     <span class="event-count" id="event-counter">0</span>
                 </h2>
                 <button type="button" id="copy-json-btn">Copy JSON</button>
