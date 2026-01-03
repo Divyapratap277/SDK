@@ -3,6 +3,7 @@ export class Bargad {
   constructor(apiKey, userId) {
     this.apiKey = apiKey;
     this.userId = userId;
+    this.SDK = "Bargad-v1.0.0";  // ✅ SDK Version Variable
 
     // Feature flags (default OFF)
     this.trackFormTime = { enabled: false };
@@ -1736,6 +1737,7 @@ calculateVariance(values) {
       payload: cleanedData,
       timestamp: Date.now(),
       userId: this.userId,
+      SDK: this.SDK,
     });
   }
 
@@ -1885,6 +1887,7 @@ calculateVariance(values) {
       payload: cleanedData,
       timestamp: Date.now(),
       userId: this.userId,
+      SDK: this.SDK,
     });
 
     console.log("Location data emitted!");
@@ -2205,6 +2208,7 @@ calculateVariance(values) {
       payload: cleanedData,
       timestamp: Date.now(),
       userId: this.userId,
+      SDK: this.SDK,
     });
 
     console.log("Gyroscope data emitted successfully!");
@@ -3248,7 +3252,43 @@ collectFingerprintComponents() {
     webrtcSupport: this.checkWebRTCSupport(),
     
     // === PERMISSIONS API ===
-    permissionsAPI: 'permissions' in navigator ? 'supported' : 'unsupported'
+    permissionsAPI: 'permissions' in navigator ? 'supported' : 'unsupported',
+    
+    // ========================================
+    // ✅ NEW ADDED SDK VARIABLES (Missing ones)
+    // ========================================
+    
+    // === DEVICE MODEL (SDK - Device Model) ===
+    deviceModel: this.extractDeviceModel(navigator.userAgent),
+    
+    // === DEVICE PRODUCT NAME (SDK - Device Product Name) ===
+    deviceProduct: navigator.product || 'UNKNOWN',
+    
+    // === OS VERSION (SDK - Device OS Version) ===
+    osVersion: this.extractOSVersion(navigator.userAgent),
+    
+    // === DEVICE BRAND NAME (Already covered by 'vendor') ===
+    deviceBrand: navigator.vendor || 'UNKNOWN',
+    
+    // === DEVICE REGISTERED BRAND NAME ===
+    deviceRegisteredBrand: this.extractBrandFromUserAgent(navigator.userAgent),
+    
+    // === AVAILABLE KEYBOARDS (SDK - Device Available Keyboards) ===
+    availableKeyboards: this.getAvailableKeyboards(),
+    
+    // === INSTALLED APPLICATIONS (SDK - Device Installed Applications) ===
+    // ⚠️ Not available in browsers for security/privacy reasons
+    installedApplications: 'NOT_SUPPORTED_IN_BROWSER',
+    
+    // === CALL STATUS (SDK - Device Call Status) ===
+    // ⚠️ Only available in native mobile apps
+    callStatus: 'NOT_SUPPORTED_IN_BROWSER',
+    
+    // === AUDIO SETTINGS (SDK - Device Audio Settings) ===
+    audioSettings: this.getAudioSettings(),
+    
+    // === AVAILABLE SENSORS (SDK - Device Available Sensors) ===
+    availableSensors: this.detectAvailableSensors()
   };
   
   console.log(`✅ Collected ${Object.keys(components).length} fingerprint components`);
@@ -3822,6 +3862,216 @@ getDaysSinceLastVisit() {
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
   
   return diffDays;
+}
+
+// Extract device model from User Agent
+extractDeviceModel(userAgent) {
+  try {
+    // Mobile device patterns
+    const mobilePatterns = [
+      // iPhone
+      /iPhone\s*(\d+[,\s]*\d+)?/i,
+      // iPad
+      /iPad\d*[,\s]*\d+/i,
+      // Samsung
+      /SM-[A-Z]\d+/i,
+      // Generic Android
+      /Android.*;\s*([^)]+)\s*Build/i,
+      // Other patterns
+      /\(([^;]+);[^)]*\)/
+    ];
+    
+    for (let pattern of mobilePatterns) {
+      const match = userAgent.match(pattern);
+      if (match && match[1]) {
+        return match[1].trim();
+      }
+    }
+    
+    // Desktop detection
+    if (/Windows NT/i.test(userAgent)) return 'Windows Desktop';
+    if (/Macintosh/i.test(userAgent)) return 'Mac Desktop';
+    if (/Linux/i.test(userAgent)) return 'Linux Desktop';
+    
+    return 'UNKNOWN';
+  } catch (e) {
+    console.error('Error extracting device model:', e);
+    return 'ERROR';
+  }
+}
+
+// Extract OS Version from User Agent
+extractOSVersion(userAgent) {
+  try {
+    // Windows
+    const windowsMatch = userAgent.match(/Windows NT (\d+\.\d+)/i);
+    if (windowsMatch) {
+      const versionMap = {
+        '10.0': 'Windows 10/11',
+        '6.3': 'Windows 8.1',
+        '6.2': 'Windows 8',
+        '6.1': 'Windows 7',
+        '6.0': 'Windows Vista'
+      };
+      return versionMap[windowsMatch[1]] || `Windows NT ${windowsMatch[1]}`;
+    }
+    
+    // macOS
+    const macMatch = userAgent.match(/Mac OS X (\d+[._]\d+[._]?\d*)/i);
+    if (macMatch) {
+      return `macOS ${macMatch[1].replace(/_/g, '.')}`;
+    }
+    
+    // iOS
+    const iosMatch = userAgent.match(/OS (\d+[._]\d+[._]?\d*)/i);
+    if (iosMatch && /iPhone|iPad|iPod/.test(userAgent)) {
+      return `iOS ${iosMatch[1].replace(/_/g, '.')}`;
+    }
+    
+    // Android
+    const androidMatch = userAgent.match(/Android (\d+\.?\d*\.?\d*)/i);
+    if (androidMatch) {
+      return `Android ${androidMatch[1]}`;
+    }
+    
+    // Linux
+    if (/Linux/i.test(userAgent)) {
+      return 'Linux';
+    }
+    
+    return 'UNKNOWN';
+  } catch (e) {
+    console.error('Error extracting OS version:', e);
+    return 'ERROR';
+  }
+}
+
+// Extract brand name from User Agent
+extractBrandFromUserAgent(userAgent) {
+  try {
+    // Check for common manufacturers
+    if (/Samsung/i.test(userAgent)) return 'Samsung';
+    if (/Xiaomi|MI |Redmi/i.test(userAgent)) return 'Xiaomi';
+    if (/OPPO/i.test(userAgent)) return 'OPPO';
+    if (/vivo/i.test(userAgent)) return 'vivo';
+    if (/OnePlus/i.test(userAgent)) return 'OnePlus';
+    if (/Huawei|HONOR/i.test(userAgent)) return 'Huawei';
+    if (/iPhone|iPad|iPod/i.test(userAgent)) return 'Apple';
+    if (/Pixel/i.test(userAgent)) return 'Google';
+    if (/Nokia/i.test(userAgent)) return 'Nokia';
+    if (/Motorola|Moto/i.test(userAgent)) return 'Motorola';
+    if (/LG/i.test(userAgent)) return 'LG';
+    if (/Sony/i.test(userAgent)) return 'Sony';
+    
+    // Desktop brands
+    if (/Windows NT/i.test(userAgent)) return 'Microsoft';
+    if (/Macintosh/i.test(userAgent)) return 'Apple';
+    if (/Linux/i.test(userAgent)) return 'Linux';
+    
+    // Use vendor if available
+    if (navigator.vendor) return navigator.vendor;
+    
+    return 'UNKNOWN';
+  } catch (e) {
+    console.error('Error extracting brand:', e);
+    return 'ERROR';
+  }
+}
+
+// Get available keyboards (Web browsers have limited access)
+getAvailableKeyboards() {
+  try {
+    // Check if keyboard API exists (very limited in browsers)
+    if ('keyboard' in navigator) {
+      return 'KEYBOARD_API_AVAILABLE';
+    }
+    
+    // Check input method (limited info)
+    const inputMethods = [];
+    
+    if ('virtualKeyboard' in navigator) {
+      inputMethods.push('Virtual Keyboard');
+    }
+    
+    // Language-based keyboard detection
+    const languages = navigator.languages || [navigator.language];
+    const keyboardLayouts = languages.map(lang => `${lang.toUpperCase()}_LAYOUT`);
+    
+    return keyboardLayouts.length > 0 
+      ? keyboardLayouts.join(', ') 
+      : 'PHYSICAL_KEYBOARD_ASSUMED';
+  } catch (e) {
+    console.error('Error detecting keyboards:', e);
+    return 'ERROR';
+  }
+}
+
+// Get audio settings
+getAudioSettings() {
+  try {
+    const audioInfo = {
+      audioContextSupported: 'AudioContext' in window || 'webkitAudioContext' in window,
+      audioWorkletSupported: 'AudioWorklet' in window,
+      mediaDevicesSupported: 'mediaDevices' in navigator,
+      webAudioAPI: 'SUPPORTED'
+    };
+    
+    // Try to get audio output devices count (if permission granted)
+    if ('mediaDevices' in navigator && 'enumerateDevices' in navigator.mediaDevices) {
+      navigator.mediaDevices.enumerateDevices()
+        .then(devices => {
+          const audioOutputs = devices.filter(d => d.kind === 'audiooutput');
+          const audioInputs = devices.filter(d => d.kind === 'audioinput');
+          audioInfo.audioOutputDevices = audioOutputs.length;
+          audioInfo.audioInputDevices = audioInputs.length;
+        })
+        .catch(() => {
+          audioInfo.audioOutputDevices = 'PERMISSION_DENIED';
+          audioInfo.audioInputDevices = 'PERMISSION_DENIED';
+        });
+    }
+    
+    return audioInfo;
+  } catch (e) {
+    console.error('Error getting audio settings:', e);
+    return {
+      audioContextSupported: false,
+      webAudioAPI: 'ERROR',
+      error: e.message
+    };
+  }
+}
+
+// Detect available sensors
+detectAvailableSensors() {
+  try {
+    const sensors = [];
+    
+    // Check for various sensor APIs
+    if ('Accelerometer' in window) sensors.push('Accelerometer');
+    if ('LinearAccelerationSensor' in window) sensors.push('LinearAccelerationSensor');
+    if ('Gyroscope' in window) sensors.push('Gyroscope');
+    if ('Magnetometer' in window) sensors.push('Magnetometer');
+    if ('AbsoluteOrientationSensor' in window) sensors.push('AbsoluteOrientationSensor');
+    if ('RelativeOrientationSensor' in window) sensors.push('RelativeOrientationSensor');
+    if ('AmbientLightSensor' in window) sensors.push('AmbientLightSensor');
+    if ('ProximitySensor' in window) sensors.push('ProximitySensor');
+    
+    // Legacy DeviceMotion/DeviceOrientation
+    if ('DeviceMotionEvent' in window) sensors.push('DeviceMotion');
+    if ('DeviceOrientationEvent' in window) sensors.push('DeviceOrientation');
+    
+    // Geolocation
+    if ('geolocation' in navigator) sensors.push('Geolocation');
+    
+    // Battery
+    if ('getBattery' in navigator) sensors.push('Battery');
+    
+    return sensors.length > 0 ? sensors : ['NO_SENSORS_DETECTED'];
+  } catch (e) {
+    console.error('Error detecting sensors:', e);
+    return ['ERROR'];
+  }
 }
 
 // ==========================================
