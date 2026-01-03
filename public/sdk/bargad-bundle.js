@@ -25,6 +25,7 @@ export class Bargad {
     this.trackDeviceID = false;
     this.trackIMEI = false;
     this.trackBluetoothDevices = false;
+    this.trackCPUCores = false; 
 
 
     this.allEvents = []; // Array to store all emitted events
@@ -112,6 +113,9 @@ export class Bargad {
        
        if (this.trackBluetoothDevices) {
     this.initBluetoothDevices();
+  }
+     if (this.trackCPUCores) {  // ✅ ADD THIS
+    this.initCPUCores();
   }
 
    
@@ -229,6 +233,10 @@ export class Bargad {
          if (this.trackBluetoothDevices) {
   this.emitBluetoothDevices();
 }
+
+      if (this.trackCPUCores) {
+    this.emitCPUCoresData();
+  }
 
         startTime = null;
       });
@@ -5347,6 +5355,106 @@ emitBluetoothDevices() {
   
   console.log("✅ Bluetooth data emitted successfully!");
 }
+
+  
+// -------- CPU CORES (DEVICE PROCESSING POWER) --------
+initCPUCores() {
+  console.log("initCPUCores() called - Detecting device processing power...");
+
+  // STEP 1: Create storage for CPU data
+  this.cpuData = {
+    cores: null,
+    coresAvailable: false,
+    deviceClass: "UNKNOWN",
+    suspicionLevel: "UNKNOWN",
+    detectionMethod: null
+  };
+
+  // STEP 2: Try to get CPU cores using navigator.hardwareConcurrency
+  if (navigator.hardwareConcurrency) {
+    const cores = navigator.hardwareConcurrency;
+    this.cpuData.cores = cores;
+    this.cpuData.coresAvailable = true;
+    this.cpuData.detectionMethod = "navigator.hardwareConcurrency";
+
+    console.log(`CPU Cores detected: ${cores} logical processors`);
+
+    // STEP 3: Classify device based on core count
+    this.cpuData.deviceClass = this.classifyDeviceBycores(cores);
+    this.cpuData.suspicionLevel = this.calculateCoreSuspicion(cores);
+
+    console.log(`Device Class: ${this.cpuData.deviceClass}`);
+    console.log(`Suspicion Level: ${this.cpuData.suspicionLevel}`);
+
+  } else {
+    // STEP 4: API not supported
+    console.warn("navigator.hardwareConcurrency not supported on this browser");
+    this.cpuData.coresAvailable = false;
+    this.cpuData.detectionMethod = "not_supported";
+  }
+}
+
+// Classify device based on CPU core count
+classifyDeviceBycores(cores) {
+  if (cores <= 2) {
+    return "LOW_END";      // Budget phone, old device, or VM
+  } else if (cores <= 4) {
+    return "MID_RANGE";    // Standard smartphone
+  } else if (cores <= 8) {
+    return "HIGH_END";     // Flagship phone or modern laptop
+  } else if (cores <= 16) {
+    return "WORKSTATION";  // Desktop or high-end laptop
+  } else {
+    return "SERVER";       // Likely server, emulator, or bot infrastructure
+  }
+}
+
+// Calculate fraud suspicion based on cores
+calculateCoreSuspicion(cores) {
+  // LOGIC:
+  // - Very low cores (1-2): Possible bot farm VM
+  // - Normal cores (3-8): Legitimate mobile/desktop
+  // - Very high cores (12+): Possible emulator or server-based bot
+
+  if (cores === 1 || cores === 2) {
+    return "MEDIUM";  // Low-end device or VM (bot farm)
+  } else if (cores >= 3 && cores <= 8) {
+    return "LOW";     // Normal device range
+  } else if (cores >= 12 && cores <= 16) {
+    return "MEDIUM";  // Desktop/laptop (not mobile)
+  } else if (cores > 16) {
+    return "HIGH";    // Server or emulator (strong bot indicator)
+  } else {
+    return "LOW";
+  }
+}
+
+// Method to emit CPU data (called on form submit)
+emitCPUCoresData() {
+  console.log("emitCPUCoresData() called");
+  console.log("Current cpuData:", this.cpuData);
+
+  if (!this.cpuData) {
+    console.warn("cpuData does not exist! Initializing empty data...");
+    this.cpuData = {
+      cores: null,
+      coresAvailable: false,
+      deviceClass: "UNKNOWN",
+      suspicionLevel: "UNKNOWN",
+      detectionMethod: "not_initialized"
+    };
+  }
+
+  this.emit({
+    type: "CPU_CORES",
+    payload: this.cpuData,
+    timestamp: Date.now(),
+    userId: this.userId
+  });
+
+  console.log("CPU Cores data emitted!");
+}
+
 
   // -------- EMIT --------
   emit(event) {

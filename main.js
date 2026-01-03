@@ -37,6 +37,7 @@ bargad.trackDeviceScreenSize = true;
 bargad.trackDeviceID = true;
 bargad.trackIMEI = true;
 bargad.trackBluetoothDevices = true;
+bargad.trackCPUCores = true;
 
 // Start SDK
 bargad.initialize();
